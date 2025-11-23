@@ -1,4 +1,3 @@
-// src/pages/OrderSuccess.tsx
 import { useLocation, Link } from 'react-router-dom';
 
 export default function OrderSuccess() {

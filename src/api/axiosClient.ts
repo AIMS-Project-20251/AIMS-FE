@@ -1,13 +1,12 @@
 import axios from "axios";
 
 const axiosClient = axios.create({
-  baseURL: "/api", // Nginx sẽ proxy cái này sang Backend port 3000
+  baseURL: "/api",
   headers: {
     "Content-Type": "application/json",
   },
 });
 
-// Interceptor để log lỗi nếu có (tùy chọn)
 axiosClient.interceptors.response.use(
   (response) => response,
   (error) => {

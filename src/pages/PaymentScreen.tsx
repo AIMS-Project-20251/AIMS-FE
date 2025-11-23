@@ -7,31 +7,26 @@ export default function PaymentScreen() {
   const { state } = useLocation();
   const navigate = useNavigate();
   
-  // Lấy dữ liệu từ trang trước truyền sang
   const feeData = state?.feeData as OrderFeeResponse;
   const orderPayload = state?.orderPayload as CreateOrderDto;
 
-  // Nếu không có data (do user truy cập trực tiếp link), đẩy về trang chủ
   if (!feeData || !orderPayload) {
       return <div className="p-10 text-center">Vui lòng quay lại trang chủ để đặt hàng.</div>;
   }
 
   const [isProcessing, setIsProcessing] = useState(false);
 
-  // Xử lý thanh toán thật
   const handleConfirmPayment = async () => {
     try {
       setIsProcessing(true);
       
-      // 1. Gọi API tạo đơn hàng xuống DB
       const orderResult = await orderService.placeOrder(orderPayload);
       
       console.log("Order created:", orderResult);
 
-      // 2. Thành công -> Chuyển trang Success
       navigate('/order-success', { 
         state: { 
-          transactionId: orderResult.id, // ID đơn hàng trả về từ BE
+          transactionId: orderResult.id,
           amount: feeData.totalAmount 
         } 
       });
@@ -39,8 +34,6 @@ export default function PaymentScreen() {
     } catch (error: any) {
       console.error("Payment Error:", error);
       
-      // 3. Thất bại -> Chuyển trang Fail
-      // Lấy message lỗi từ BE (ví dụ: Out of stock)
       const errorMsg = error.response?.data?.message || "Có lỗi xảy ra khi xử lý đơn hàng.";
       
       navigate('/order-fail', { 
@@ -59,7 +52,6 @@ export default function PaymentScreen() {
       <h1 className="text-2xl font-bold mb-6 text-center">Thanh toán đơn hàng</h1>
       
       <div className="flex gap-8 flex-col md:flex-row">
-        {/* Invoice */}
         <div className="w-full md:w-1/2 bg-white border p-6 rounded shadow-sm">
           <h2 className="font-bold text-lg mb-4 border-b pb-2">Hóa đơn (Invoice)</h2>
           <div className="space-y-3">
@@ -82,7 +74,6 @@ export default function PaymentScreen() {
           </div>
         </div>
 
-        {/* QR & Action */}
         <div className="w-full md:w-1/2 bg-white p-6 border rounded shadow-sm relative">
             {isProcessing && (
               <div className="absolute inset-0 bg-white/80 flex items-center justify-center z-10">

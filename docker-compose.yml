@@ -4,9 +4,6 @@ services:
     build: .
     container_name: aims-fe-container
     ports:
-      # Map cổng 80 của máy thật vào cổng 80 của container
-      # Bạn sẽ truy cập web bằng http://localhost (không cần :3000 nữa)
       - "80:80" 
     extra_hosts:
-      # Cầu nối quan trọng để gọi sang Backend
       - "host.docker.internal:host-gateway"
