@@ -89,7 +89,9 @@ export default function PaymentScreen() {
     <div className="mx-auto p-4">
         <h1 className="text-2xl font-bold mb-6 text-center">Thanh toán đơn hàng</h1>
 
-        <div className="grid lg:grid-cols-2 gap-8">
+        
+    <div className="min-h-screen bg-gray-100 py-10 px-4 flex justify-center items-start">
+        <div className="w-full max-w-5xl flex flex-col md:flex-row gap-8">
           {/* Phần 1: Invoice Screen - Hiển thị hóa đơn [cite: 63] */}
           <div className="bg-white rounded-xl shadow-lg overflow-hidden">
             <div className="bg-gradient-to-r from-red-500 to-pink-600 text-white p-6">
@@ -265,6 +267,7 @@ export default function PaymentScreen() {
             </div>
           </div>
         </div>
+      </div>
       </div>
   );
 }
