@@ -1,5 +1,4 @@
 // src/pages/OrderFail.tsx
-import React from 'react';
 import { useLocation, Link, useNavigate } from 'react-router-dom';
 
 export default function OrderFail() {
