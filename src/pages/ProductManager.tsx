@@ -1,14 +1,16 @@
 import React, { useEffect, useState, useRef } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { productService } from '../services/productService';
 import type { Product, CreateProductDto } from '../types/product';
-import { Pencil, Trash2, Plus, X, Package, Weight } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
+import { Pencil, Trash2, Plus, X, Package, Weight, Search } from 'lucide-react';
 
 export default function ProductManager() {
   const [products, setProducts] = useState<Product[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingId, setEditingId] = useState<number | null>(null);
+  const [searchTerm, setSearchTerm] = useState('');
+
   const navigate = useNavigate();
   const originalValueRef = useRef<HTMLInputElement>(null);
   const currentPriceRef = useRef<HTMLInputElement>(null);
@@ -24,10 +26,10 @@ export default function ProductManager() {
     type: 'BOOK'
   });
 
-  const fetchProducts = async () => {
+  const fetchProducts = async (keyword = '') => {
     try {
       setIsLoading(true);
-      const data = await productService.getAll();
+      const data = await productService.getAll(keyword);
       setProducts(data);
     } catch (error) {
       console.error(error);
@@ -40,7 +42,16 @@ export default function ProductManager() {
     fetchProducts();
   }, []);
 
-  // Hàm xử lý số thực (cho phép dấu chấm/phẩy) -> Dùng cho Giá & Trọng lượng
+  const handleSearch = () => {
+    fetchProducts(searchTerm);
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Enter') {
+      handleSearch();
+    }
+  };
+
   const handleNumberInput = (field: string, value: string) => {
     let cleanValue = value.replace(/,/g, '.');
     if (!/^[0-9.]*$/.test(cleanValue)) return;
@@ -48,9 +59,8 @@ export default function ProductManager() {
     setFormData({ ...formData, [field]: cleanValue });
   };
 
-  // Hàm xử lý số nguyên (CHỈ cho phép số 0-9) -> Dùng cho Số lượng tồn kho
   const handleIntegerInput = (field: string, value: string) => {
-    if (!/^[0-9]*$/.test(value)) return; // Chặn luôn nếu có dấu chấm/phẩy
+    if (!/^[0-9]*$/.test(value)) return;
     setFormData({ ...formData, [field]: value });
   };
 
@@ -73,7 +83,7 @@ export default function ProductManager() {
         alert("Tạo mới thành công!");
       }
       setIsModalOpen(false);
-      fetchProducts();
+      fetchProducts(searchTerm);
 
     } catch (error: any) {
       console.error(error);
@@ -91,7 +101,6 @@ export default function ProductManager() {
       } 
       else if (Array.isArray(message)) {
         const firstError = message[0];
-        
         if (firstError.includes('originalValue')) {
            originalValueRef.current?.setCustomValidity("Vui lòng nhập giá gốc hợp lệ");
            originalValueRef.current?.reportValidity();
@@ -114,7 +123,7 @@ export default function ProductManager() {
     if (!window.confirm("Bạn có chắc muốn xóa sản phẩm này?")) return;
     try {
       await productService.delete(id);
-      fetchProducts();
+      fetchProducts(searchTerm);
     } catch (error) {
       alert("Không thể xóa sản phẩm.");
     }
@@ -152,17 +161,32 @@ export default function ProductManager() {
 
   return (
     <div className="container mx-auto p-6 bg-gray-100 min-h-screen">
-      <div className="flex justify-between items-center mb-6 sticky top-0 bg-gray-100 z-10 py-2">
+      
+      <div className="flex flex-col md:flex-row justify-between items-center mb-6 sticky top-0 bg-gray-100 z-10 py-2 gap-4">
         <div>
            <h1 className="text-2xl font-bold text-gray-800">Quản lý kho hàng</h1>
            <p className="text-sm text-gray-500">Tổng số: {products.length} sản phẩm</p>
         </div>
-        <button 
-          onClick={() => openModal()}
-          className="bg-red-600 text-white px-5 py-2.5 rounded shadow hover:bg-red-700 flex items-center gap-2 font-medium"
-        >
-          <Plus size={20} /> Thêm Mới
-        </button>
+
+        <div className="flex gap-3 w-full md:w-auto">
+            <div className="relative flex-1 md:w-64">
+                <Search className="absolute left-3 top-2.5 text-gray-400" size={18} />
+                <input 
+                    type="text" 
+                    placeholder="Tìm theo tên..." 
+                    className="w-full pl-10 pr-4 py-2 border rounded-full focus:outline-none focus:ring-2 focus:ring-red-200"
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    onKeyDown={handleKeyDown}
+                />
+            </div>
+            <button 
+              onClick={() => openModal()}
+              className="bg-red-600 text-white px-5 py-2 rounded-full shadow hover:bg-red-700 flex items-center gap-2 font-medium whitespace-nowrap"
+            >
+              <Plus size={20} /> Thêm Mới
+            </button>
+        </div>
       </div>
 
       {isLoading ? (
@@ -184,9 +208,16 @@ export default function ProductManager() {
                       alt={p.title}
                       className="absolute top-0 left-0 w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
                    />
-                   <div className="absolute top-2 left-0 bg-red-600 text-white text-[10px] font-bold px-2 py-0.5 rounded-r-sm shadow-sm">
-                      {p.type}
+                   
+                   <div className={`absolute top-2 left-0 text-white text-[10px] font-bold px-2 py-0.5 rounded-r-sm shadow-sm
+                        ${p.type === 'BOOK' ? 'bg-blue-600' : 
+                          p.type === 'NEWSPAPER' ? 'bg-green-600' : 
+                          'bg-red-600'
+                        }`}
+                    >
+                        {p.type}
                    </div>
+
                    <div className="absolute inset-0 bg-black/40 hidden group-hover:flex items-center justify-center gap-2 transition-opacity">
                       <button 
                          onClick={(e) => { e.stopPropagation(); openModal(p); }}
@@ -239,6 +270,12 @@ export default function ProductManager() {
               </div>
             );
           })}
+          
+          {products.length === 0 && (
+             <div className="col-span-full text-center py-20 text-gray-400">
+                Không tìm thấy sản phẩm nào.
+             </div>
+          )}
         </div>
       )}
 
@@ -267,10 +304,10 @@ export default function ProductManager() {
                 <label className="text-sm font-medium text-gray-700">Loại sản phẩm</label>
                 <select className={inputClass}
                   value={formData.type} onChange={e => setFormData({...formData, type: e.target.value as any})}>
-                  <option value="BOOK">Sách (BOOK)</option>
+                  <option value="BOOK">Sách</option>
                   <option value="CD">Đĩa CD</option>
                   <option value="DVD">Đĩa DVD</option>
-                  <option value="LP">Đĩa LP</option>
+                  <option value="NEWSPAPER">Báo</option>
                 </select>
               </div>
 
@@ -315,7 +352,6 @@ export default function ProductManager() {
                 <input 
                   type="text" className={inputClass} required
                   value={formData.quantity} 
-                  // SỬA: Dùng hàm handleIntegerInput cho số lượng
                   onChange={e => handleIntegerInput('quantity', e.target.value)}
                   onFocus={e => e.target.select()}
                   placeholder="0"

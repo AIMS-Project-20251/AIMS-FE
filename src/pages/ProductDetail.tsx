@@ -48,7 +48,6 @@ export default function ProductDetail() {
 
   return (
     <div className="min-h-screen bg-gray-50 pb-10">
-      {/* Header nhỏ */}
       <div className="bg-white shadow-sm p-4 sticky top-0 z-10">
         <div className="container mx-auto flex items-center gap-2">
             <button onClick={() => navigate(-1)} className="p-2 hover:bg-gray-100 rounded-full">
@@ -62,7 +61,6 @@ export default function ProductDetail() {
         <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-0 md:gap-8">
                 
-                {/* CỘT TRÁI: ẢNH SẢN PHẨM */}
                 <div className="p-4 md:p-8 bg-gray-50 flex items-center justify-center border-b md:border-b-0 md:border-r border-gray-100">
                     <img 
                         src={product.imageUrl || 'https://placehold.co/600'} 
@@ -71,7 +69,6 @@ export default function ProductDetail() {
                     />
                 </div>
 
-                {/* CỘT PHẢI: THÔNG TIN */}
                 <div className="p-6 md:p-8 flex flex-col">
                     <div className="flex items-center gap-2 mb-2">
                         <span className="bg-red-100 text-red-600 text-xs font-bold px-2 py-1 rounded">

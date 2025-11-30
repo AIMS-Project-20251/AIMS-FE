@@ -6,8 +6,10 @@ import type {
 } from "../types/product";
 
 export const productService = {
-  getAll: async (): Promise<Product[]> => {
-    const response = await axiosClient.get("/products");
+  getAll: async (search?: string): Promise<Product[]> => {
+    const response = await axiosClient.get("/products", {
+      params: { search },
+    });
     return response.data;
   },
 
