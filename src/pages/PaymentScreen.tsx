@@ -1,105 +1,160 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { orderService } from '../services/orderService';
-import type { OrderFeeResponse, CreateOrderDto } from '../types/order';
+import { paymentService } from '../services/paymentService';
 
 export default function PaymentScreen() {
   const { state } = useLocation();
   const navigate = useNavigate();
   
-  const feeData = state?.feeData as OrderFeeResponse;
-  const orderPayload = state?.orderPayload as CreateOrderDto;
-
-  if (!feeData || !orderPayload) {
-      return <div className="p-10 text-center">Vui lòng quay lại trang chủ để đặt hàng.</div>;
-  }
+  const { orderId, totalAmount, feeData } = state || {};
 
   const [isProcessing, setIsProcessing] = useState(false);
+  const [isInitPayment, setIsInitPayment] = useState(false);
 
-  const handleConfirmPayment = async () => {
-    try {
-      setIsProcessing(true);
-      
-      const orderResult = await orderService.placeOrder(orderPayload);
-      
-      console.log("Order created:", orderResult);
+  useEffect(() => {
+    if (!orderId) return;
 
-      navigate('/order-success', { 
-        state: { 
-          transactionId: orderResult.id,
-          amount: feeData.totalAmount 
-        } 
-      });
+    const initPayment = async () => {
+      try {
+        console.log("Đang khởi tạo giao dịch cho Order ID:", orderId);
+        await paymentService.createPaymentUrl(orderId, 'VIETQR');
+        setIsInitPayment(true); 
+      } catch (error) {
+        console.error("Lỗi khởi tạo thanh toán:", error);
+        setIsInitPayment(true); 
+      }
+    };
 
-    } catch (error: any) {
-      console.error("Payment Error:", error);
-      
-      const errorMsg = error.response?.data?.message || "Có lỗi xảy ra khi xử lý đơn hàng.";
-      
-      navigate('/order-fail', { 
-        state: { 
-          message: errorMsg,
-          errorCode: error.response?.status 
-        } 
-      });
-    } finally {
-      setIsProcessing(false);
-    }
+    initPayment();
+  }, [orderId]);
+
+
+  const handleSimulateSuccess = () => {
+    if (!isInitPayment) return;
+    
+    setIsProcessing(true);
+
+    setTimeout(() => {
+        setIsProcessing(false);
+        console.log("Giả lập: Thanh toán thành công!");
+
+        navigate('/order-success', { 
+            state: { 
+            transactionId: orderId, 
+            amount: totalAmount 
+            } 
+        });
+    }, 1500);
   };
+
+  const handleSimulateFail = () => {
+    if (!isInitPayment) return;
+
+    setIsProcessing(true);
+
+    setTimeout(() => {
+        setIsProcessing(false);
+        console.log("Giả lập: Thanh toán thất bại!");
+        
+        alert("Giả lập: Giao dịch thất bại. Tài khoản không đủ số dư hoặc bị hủy.");
+    }, 1500);
+  };
+
+
+  if (!orderId || !totalAmount) {
+      return (
+        <div className="p-10 text-center">
+          <p className="mb-4">Không tìm thấy thông tin đơn hàng.</p>
+          <button onClick={() => navigate('/')} className="text-blue-600 underline">Về trang chủ</button>
+        </div>
+      );
+  }
+
+  const QR_BANK_ID = "MB";         
+  const QR_ACC_NO = "0000000000";  
+  const QR_CONTENT = `ORDER ${orderId}`; 
+  const qrImageUrl = `https://img.vietqr.io/image/${QR_BANK_ID}-${QR_ACC_NO}-compact.png?amount=${totalAmount}&addInfo=${QR_CONTENT}`;
 
   return (
     <div className="container mx-auto p-4 max-w-5xl">
-      <h1 className="text-2xl font-bold mb-6 text-center">Thanh toán đơn hàng</h1>
+      <h1 className="text-2xl font-bold mb-6 text-center">Thanh toán đơn hàng (Chế độ Test)</h1>
       
       <div className="flex gap-8 flex-col md:flex-row">
-        <div className="w-full md:w-1/2 bg-white border p-6 rounded shadow-sm">
-          <h2 className="font-bold text-lg mb-4 border-b pb-2">Hóa đơn (Invoice)</h2>
-          <div className="space-y-3">
+        
+        <div className="w-full md:w-1/2 bg-white border p-6 rounded shadow-sm h-fit">
+          <h2 className="font-bold text-lg mb-4 border-b pb-2">Thông tin thanh toán</h2>
+          <div className="space-y-4">
              <div className="flex justify-between">
-                <span>Tạm tính:</span>
-                <span>{feeData.subtotal.toLocaleString()} ₫</span>
+                <span className="text-gray-600">Mã đơn hàng:</span>
+                <span className="font-bold text-black">#{orderId}</span>
              </div>
-             <div className="flex justify-between">
-                <span>VAT (10%):</span>
-                <span>{feeData.vatAmount.toLocaleString()} ₫</span>
-             </div>
-             <div className="flex justify-between">
-                <span>Phí vận chuyển:</span>
-                <span>{feeData.shippingFee.toLocaleString()} ₫</span>
-             </div>
-             <div className="flex justify-between font-bold text-red-600 text-xl pt-4 border-t">
-                <span>Tổng thanh toán:</span>
-                <span>{feeData.totalAmount.toLocaleString()} ₫</span>
+             
+             {feeData && (
+               <>
+                 <div className="flex justify-between text-sm">
+                    <span>Tạm tính:</span>
+                    <span>{feeData.subtotal?.toLocaleString()} ₫</span>
+                 </div>
+                 <div className="flex justify-between text-sm">
+                    <span>Phí vận chuyển:</span>
+                    <span>{feeData.shippingFee?.toLocaleString()} ₫</span>
+                 </div>
+               </>
+             )}
+
+             <div className="flex justify-between font-bold text-red-600 text-2xl pt-4 border-t border-dashed">
+                <span>Tổng cộng:</span>
+                <span>{totalAmount.toLocaleString()} ₫</span>
              </div>
           </div>
         </div>
 
-        <div className="w-full md:w-1/2 bg-white p-6 border rounded shadow-sm relative">
-            {isProcessing && (
-              <div className="absolute inset-0 bg-white/80 flex items-center justify-center z-10">
-                <div className="text-center">
-                   <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-red-600 mx-auto mb-2"></div>
-                   <span className="text-red-600 font-bold">Đang xử lý đơn hàng...</span>
-                </div>
+        <div className="w-full md:w-1/2 bg-white p-6 border rounded shadow-sm relative flex flex-col items-center">
+            
+            {(isProcessing || !isInitPayment) && (
+              <div className="absolute inset-0 bg-white/90 flex flex-col items-center justify-center z-20 rounded">
+                <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-red-600 mb-2"></div>
+                <span className="text-red-600 font-bold text-sm">
+                    {!isInitPayment ? "Đang khởi tạo giao dịch..." : "Đang xử lý giả lập..."}
+                </span>
               </div>
             )}
 
-            <p className="mb-4 text-center font-medium">Quét mã QR để thanh toán</p>
-            <div className="flex justify-center">
+            <h3 className="font-bold text-lg mb-2">VietQR Simulator</h3>
+            
+            <div className="border-2 border-red-100 p-2 rounded-lg mb-4">
                  <img 
-                  src={`https://img.vietqr.io/image/MB-0000000000-compact.png?amount=${feeData.totalAmount}&addInfo=AIMS Order`} 
-                  alt="VietQR"
-                  className="w-48 h-48 object-contain mb-4 border rounded"
+                  src={qrImageUrl} 
+                  alt="VietQR Code"
+                  className="w-56 h-56 object-contain"
                 />
             </div>
             
-            <button 
-                onClick={handleConfirmPayment}
-                disabled={isProcessing}
-                className="w-full bg-green-600 text-white py-3 rounded font-bold hover:bg-green-700 transition shadow disabled:bg-gray-400"
-            >
-                {isProcessing ? 'Đang xử lý...' : 'Tôi đã hoàn tất thanh toán'}
-            </button>
+            <div className="text-center mb-6 bg-blue-50 p-3 rounded w-full">
+                <p className="text-xs text-gray-500">Nội dung chuyển khoản</p>
+                <p className="font-bold text-blue-800 text-lg select-all cursor-pointer">
+                    {QR_CONTENT}
+                </p>
+            </div>
+            
+            <div className="flex flex-col gap-3 w-full">
+                <button 
+                    onClick={handleSimulateSuccess}
+                    disabled={isProcessing || !isInitPayment}
+                    className="w-full bg-green-600 text-white py-3 rounded-lg font-bold hover:bg-green-700 transition shadow-lg transform active:scale-95 disabled:bg-gray-400 disabled:transform-none"
+                >
+                    ✅ Giả lập Thành công
+                </button>
+
+                <button 
+                    onClick={handleSimulateFail}
+                    disabled={isProcessing || !isInitPayment}
+                    className="w-full bg-gray-500 text-white py-3 rounded-lg font-bold hover:bg-gray-600 transition shadow-lg transform active:scale-95 disabled:bg-gray-400 disabled:transform-none"
+                >
+                    ❌ Giả lập Thất bại
+                </button>
+            </div>
+            
         </div>
       </div>
     </div>
