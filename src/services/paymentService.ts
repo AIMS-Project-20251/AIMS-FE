@@ -11,7 +11,7 @@ export const paymentService = {
 
   confirmVietQR: async (orderId: number) => {
     const response = await axiosClient.post("/pay-order/confirm-vietqr", {
-      orderId,
+      vietQROrderId: String(orderId),
     });
     return response.data;
   },

@@ -7,92 +7,90 @@ import { ShoppingCart, Star, Search, Bell } from 'lucide-react';
 export default function HomePage() {
   const [products, setProducts] = useState<Product[]>([]);
   const [isLoading, setIsLoading] = useState(false);
+  const [searchTerm, setSearchTerm] = useState('');
   const navigate = useNavigate();
 
-  // Load danh sách sản phẩm khi vào trang
+  const loadProducts = async (keyword = '') => {
+    try {
+      setIsLoading(true);
+      const data = await productService.getAll(keyword);
+      setProducts(data);
+    } catch (error) {
+      console.error("Lỗi tải sản phẩm:", error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   useEffect(() => {
-    const loadProducts = async () => {
-      try {
-        setIsLoading(true);
-        const data = await productService.getAll();
-        setProducts(data);
-      } catch (error) {
-        console.error("Lỗi tải sản phẩm:", error);
-      } finally {
-        setIsLoading(false);
-      }
-    };
     loadProducts();
   }, []);
 
-  // Hàm tính % giảm giá để hiển thị nhãn giảm giá
+  const handleSearch = () => {
+    loadProducts(searchTerm);
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Enter') {
+      handleSearch();
+    }
+  };
+
   const getDiscountPercent = (original: number, current: number) => {
     if (!original || original <= current) return 0;
     return Math.round(((original - current) / original) * 100);
   };
 
-  // Chuyển hướng sang trang chi tiết sản phẩm
-  const handleProductClick = (productId: number) => {
-    navigate(`/product/${productId}`);
-  };
-
   return (
     <div className="min-h-screen bg-gray-100">
-      
-      {/* --- HEADER --- */}
       <header className="bg-red-600 text-white shadow-md sticky top-0 z-50">
         <div className="container mx-auto px-4 h-16 flex justify-between items-center gap-4">
-          
-          {/* Logo */}
-          <div className="text-2xl font-bold cursor-pointer flex items-center gap-2" onClick={() => navigate('/')}>
+          <div className="text-2xl font-bold cursor-pointer flex items-center gap-2" onClick={() => { setSearchTerm(''); loadProducts(''); navigate('/'); }}>
              AIMS <span className="text-xs bg-white text-red-600 px-1 rounded">Market</span>
           </div>
 
-          {/* Search Bar (Giả lập) */}
           <div className="flex-1 max-w-2xl hidden md:flex relative">
              <input 
                 type="text" 
-                placeholder="Bạn tìm gì hôm nay?" 
+                placeholder="Tìm sản phẩm..." 
                 className="w-full py-2 px-4 rounded-sm text-gray-800 focus:outline-none shadow-sm"
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                onKeyDown={handleKeyDown}
              />
-             <button className="absolute right-1 top-1 bottom-1 bg-red-700 px-4 rounded-sm hover:bg-red-800">
+             <button 
+                onClick={handleSearch}
+                className="absolute right-1 top-1 bottom-1 bg-red-700 px-4 rounded-sm hover:bg-red-800"
+             >
                 <Search size={18} />
              </button>
           </div>
 
-          {/* Actions */}
           <div className="flex items-center gap-4 md:gap-6">
              <div className="hidden md:flex flex-col items-center cursor-pointer hover:opacity-90">
                 <Bell size={20} />
                 <span className="text-[10px]">Thông báo</span>
              </div>
              
-             {/* Nút Admin (Chỉ hiện để demo) */}
-             <button 
-                onClick={() => navigate('/admin/products')} 
-                className="text-xs bg-white/20 px-3 py-1.5 rounded hover:bg-white/30 transition border border-white/40"
-             >
+             <button onClick={() => navigate('/admin/products')} className="text-xs bg-white/20 px-3 py-1.5 rounded hover:bg-white/30 transition border border-white/40">
                 Kênh Người Bán
              </button>
 
              <div className="relative cursor-pointer hover:opacity-90" onClick={() => navigate('/checkout')}>
                 <ShoppingCart size={24} />
-                <span className="absolute -top-1 -right-2 bg-white text-red-600 text-xs font-bold px-1.5 rounded-full border border-red-600">
-                   0
-                </span>
+                <span className="absolute -top-1 -right-2 bg-white text-red-600 text-xs font-bold px-1.5 rounded-full border border-red-600">0</span>
              </div>
           </div>
         </div>
       </header>
 
-      {/* --- MAIN CONTENT --- */}
       <main className="container mx-auto p-4 py-6 max-w-7xl">
-        
-        {/* Danh mục tiêu đề */}
-        <div className="bg-white p-4 mb-4 border-b-4 border-red-600 sticky top-16 z-40 shadow-sm rounded-t-md">
+
+        <div className="bg-white p-4 mb-4 border-b-4 border-red-600 sticky top-16 z-40 shadow-sm rounded-t-md flex justify-between items-center">
            <h2 className="text-red-600 font-bold uppercase text-lg flex items-center gap-2">
               Gợi ý hôm nay
            </h2>
+           {searchTerm && <span className="text-sm text-gray-500">Kết quả tìm kiếm cho: "{searchTerm}"</span>}
         </div>
 
         {isLoading ? (
@@ -100,18 +98,16 @@ export default function HomePage() {
              <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-red-600"></div>
           </div>
         ) : (
-          /* GRID SẢN PHẨM */
           <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-3">
-            {products.map((product) => {
+            {products.length > 0 ? products.map((product) => {
               const discount = getDiscountPercent(product.originalValue, product.currentPrice);
               
               return (
                 <div 
                   key={product.id} 
                   className="bg-white border border-gray-100 rounded-sm hover:shadow-lg hover:-translate-y-0.5 transition-all duration-200 cursor-pointer flex flex-col relative group"
-                  onClick={() => handleProductClick(product.id)}
+                  onClick={() => navigate(`/product/${product.id}`)}
                 >
-                  {/* Ảnh sản phẩm */}
                   <div className="relative w-full pt-[100%] overflow-hidden bg-gray-50">
                      <img 
                         src={product.imageUrl || 'https://placehold.co/400'} 
@@ -119,13 +115,9 @@ export default function HomePage() {
                         className="absolute top-0 left-0 w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
                         loading="lazy" 
                      />
-                     
-                     {/* Badge Mall/Loại SP */}
                      <div className="absolute top-2 left-0 bg-red-600 text-white text-[10px] font-bold px-2 py-0.5 rounded-r-sm shadow-sm z-10">
                         {product.type === 'BOOK' ? 'Mall' : 'Yêu thích'}
                      </div>
-
-                     {/* Nhãn giảm giá góc phải (nếu có) */}
                      {discount > 0 && (
                         <div className="absolute top-0 right-0 bg-yellow-400 text-red-600 text-xs font-bold px-1.5 py-1 flex flex-col items-center leading-tight w-10">
                            <span>{discount}%</span>
@@ -134,20 +126,14 @@ export default function HomePage() {
                      )}
                   </div>
 
-                  {/* Thông tin chi tiết */}
                   <div className="p-2.5 flex flex-col flex-1">
-                    {/* Tên sản phẩm */}
                     <h3 className="text-xs md:text-sm text-gray-800 line-clamp-2 min-h-[36px] mb-2 leading-relaxed" title={product.title}>
                       {product.title}
                     </h3>
-
-                    {/* Tag Freeship (Giả lập) */}
                     <div className="mb-2">
                        <span className="border border-green-500 text-green-500 text-[10px] px-1 rounded">Freeship Xtra</span>
                     </div>
-
                     <div className="mt-auto">
-                        {/* Giá */}
                         <div className="flex flex-wrap items-baseline gap-1 mb-1">
                             <span className="text-red-600 font-medium text-base md:text-lg">
                                 ₫{product.currentPrice.toLocaleString()}
@@ -158,8 +144,6 @@ export default function HomePage() {
                                 </span>
                             )}
                         </div>
-                        
-                        {/* Rating & Đã bán */}
                         <div className="flex items-center justify-between text-[10px] text-gray-500 mt-2">
                              <div className="flex items-center gap-0.5">
                                  {[1,2,3,4,5].map(i => (
@@ -168,21 +152,26 @@ export default function HomePage() {
                              </div>
                              <span>Đã bán {product.quantity * 3}</span>
                         </div>
-                        
-                        {/* Địa điểm (Giả lập) */}
                         <div className="text-[10px] text-gray-400 mt-1 text-right">
                            {product.id % 2 === 0 ? 'TP. Hồ Chí Minh' : 'Hà Nội'}
                         </div>
                     </div>
                   </div>
                   
-                  {/* Hover Action: Tìm sản phẩm tương tự */}
                   <div className="absolute bottom-0 left-0 w-full bg-red-600 text-center text-white text-xs py-1.5 opacity-0 group-hover:opacity-100 transition-opacity duration-200 hidden md:block">
                      Tìm sản phẩm tương tự
                   </div>
                 </div>
               );
-            })}
+            }) : (
+                <div className="col-span-full text-center py-20 text-gray-500 flex flex-col items-center">
+                    <Search size={48} className="text-gray-300 mb-4" />
+                    <p>Không tìm thấy sản phẩm nào phù hợp với từ khóa "{searchTerm}"</p>
+                    <button onClick={() => {setSearchTerm(''); loadProducts('');}} className="mt-4 text-blue-600 hover:underline">
+                        Xem tất cả sản phẩm
+                    </button>
+                </div>
+            )}
           </div>
         )}
       </main>

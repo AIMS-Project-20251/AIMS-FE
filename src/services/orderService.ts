@@ -11,4 +11,9 @@ export const orderService = {
     const response = await axiosClient.post("/place-order", data);
     return response.data;
   },
+
+  getOrderStatus: async (orderId: number) => {
+    const response = await axiosClient.get(`/orders/${orderId}`);
+    return response.data.status;
+  },
 };

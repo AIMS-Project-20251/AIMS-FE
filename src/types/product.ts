@@ -7,9 +7,13 @@ export interface Product {
   quantity: number;
   weight: number;
   imageUrl: string;
-  type: "BOOK" | "CD" | "DVD" | "LP";
+  type: "BOOK" | "CD" | "DVD" | "NEWSPAPER";
   isActive: boolean;
+  attributes?: any;
+  createdAt?: string;
+  updatedAt?: string;
 }
 
-export interface CreateProductDto extends Omit<Product, "id" | "isActive"> {}
+export interface CreateProductDto
+  extends Omit<Product, "id" | "isActive" | "createdAt" | "updatedAt"> {}
 export interface UpdateProductDto extends Partial<CreateProductDto> {}
