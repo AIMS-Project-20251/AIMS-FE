@@ -13,7 +13,7 @@ export const orderService = {
   },
 
   getOrderStatus: async (orderId: number) => {
-    const response = await axiosClient.get(`/orders/${orderId}`);
-    return response.data.status;
+    const response = await axiosClient.get(`/place-order/${orderId}`);
+    return response.data;
   },
 };

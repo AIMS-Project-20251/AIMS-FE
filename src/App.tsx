@@ -6,6 +6,7 @@ import OrderFail from './pages/OrderFail';
 import ProductManager from './pages/ProductManager';
 import ProductDetail from './pages/ProductDetail';
 import HomePage from './pages/HomePage';
+import PaypalCallback from './pages/PaypalCallback';
 
 function App() {
   return (
@@ -16,6 +17,8 @@ function App() {
           <Route path="/" element={<HomePage />} />
 
           <Route path="/payment" element={<PaymentScreen />} />
+
+          <Route path="/payment/paypal-callback" element={<PaypalCallback />} />
 
           <Route path="/order-success" element={<OrderSuccess />} />
 
@@ -28,6 +31,7 @@ function App() {
           <Route path="/checkout" element={<DeliveryInfo />} />
 
           <Route path="*" element={<Navigate to="/" replace />} />
+          
         </Routes>
       </div>
       

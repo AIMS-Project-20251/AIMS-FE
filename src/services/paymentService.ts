@@ -15,4 +15,18 @@ export const paymentService = {
     });
     return response.data;
   },
+
+  confirmPaypal: async (token: string) => {
+    const response = await axiosClient.get("/pay-order/confirm-paypal", {
+      params: { token },
+    });
+    return response.data;
+  },
+
+  cancelPaypal: async (token: string) => {
+    const response = await axiosClient.get("/pay-order/cancel-paypal", {
+      params: { token },
+    });
+    return response.data;
+  },
 };
