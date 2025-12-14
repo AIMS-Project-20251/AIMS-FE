@@ -1,4 +1,4 @@
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { Routes, Route, Navigate } from 'react-router-dom';
 import DeliveryInfo from './pages/DeliveryInfo';
 import PaymentScreen from './pages/PaymentScreen';
 import OrderSuccess from './pages/OrderSuccess';
@@ -10,8 +10,6 @@ import PaypalCallback from './pages/PaypalCallback';
 
 function App() {
   return (
-    <BrowserRouter>
-      
       <div className="min-h-screen bg-gray-50">
         <Routes>
           <Route path="/" element={<HomePage />} />
@@ -28,14 +26,12 @@ function App() {
 
           <Route path="/product/:id/:type" element={<ProductDetail />} />
           
-          <Route path="/checkout" element={<DeliveryInfo />} />
+          <Route path="/delivery-info" element={<DeliveryInfo />} />
 
           <Route path="*" element={<Navigate to="/" replace />} />
           
         </Routes>
       </div>
-      
-    </BrowserRouter>
   );
 }
 
