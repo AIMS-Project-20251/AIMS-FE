@@ -13,8 +13,8 @@ export const productService = {
     return response.data;
   },
 
-  getOne: async (id: number): Promise<Product> => {
-    const response = await axiosClient.get(`/products/${id}`);
+  getOne: async (id: number, type: string): Promise<Product> => {
+    const response = await axiosClient.get(`/products/${id}/${type}`);
     return response.data;
   },
 
@@ -28,7 +28,7 @@ export const productService = {
     return response.data;
   },
 
-  delete: async (id: number): Promise<void> => {
-    await axiosClient.delete(`/products/${id}`);
+  delete: async (id: number, type: string): Promise<void> => {
+    await axiosClient.delete(`/products/${id}/${type}`);
   },
 };

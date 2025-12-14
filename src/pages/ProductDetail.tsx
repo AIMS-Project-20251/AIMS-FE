@@ -5,7 +5,7 @@ import type { Product } from '../types/product';
 import { ShoppingCart, ArrowLeft, Star, CheckCircle } from 'lucide-react';
 
 export default function ProductDetail() {
-  const { id } = useParams();
+  const { id, type } = useParams();
   const navigate = useNavigate();
   const [product, setProduct] = useState<Product | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -13,10 +13,10 @@ export default function ProductDetail() {
 
   useEffect(() => {
     const fetchDetail = async () => {
-      if (!id) return;
+      if (!id || !type) return;
       try {
         setIsLoading(true);
-        const data = await productService.getOne(Number(id));
+        const data = await productService.getOne(Number(id), type);
         setProduct(data);
       } catch (error) {
         console.error("Lỗi tải sản phẩm:", error);
@@ -25,7 +25,7 @@ export default function ProductDetail() {
       }
     };
     fetchDetail();
-  }, [id]);
+  }, [id, type]);
 
   const handleBuyNow = () => {
     if (!product) return;

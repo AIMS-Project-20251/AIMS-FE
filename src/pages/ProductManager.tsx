@@ -6,10 +6,15 @@ import { Pencil, Trash2, Plus, X, Search, Package, Weight, Loader } from 'lucide
 
 const DEFAULT_ATTRIBUTES = {
   BOOK: { authors: '', coverType: 'PAPERBACK', publisher: '', publicationDate: '', pages: 0, language: '', genre: '' },
-  CD: { artists: '', recordLabel: '', tracks: '[]', genre: '', releaseDate: '' },
+  CD: { artists: '', recordLabel: '', genre: '', releaseDate: '' },
   DVD: { discType: 'BLURAY', director: '', runtime: '', studio: '', language: '', subtitles: '', releaseDate: '', genre: '' },
   NEWSPAPER: { editorInChief: '', publisher: '', publicationDate: '', issueNumber: '', publicationFrequency: '', issn: '', language: '', sections: '' }
 };
+
+interface TrackItem {
+  title: string;
+  length: string;
+}
 
 export default function ProductManager() {
   const [products, setProducts] = useState<Product[]>([]);
@@ -30,7 +35,7 @@ export default function ProductManager() {
   });
 
   const [attributeData, setAttributeData] = useState<any>(DEFAULT_ATTRIBUTES.BOOK);
-
+  const [trackList, setTrackList] = useState<TrackItem[]>([]);
   const navigate = useNavigate();
   const currentPriceRef = useRef<HTMLInputElement>(null);
 
@@ -50,19 +55,32 @@ export default function ProductManager() {
     fetchProducts();
   }, []);
 
-  const handleSearch = () => {
-    fetchProducts(searchTerm);
+  const handleSearch = () => fetchProducts(searchTerm);
+  
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Enter') handleSearch();
   };
 
-  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === 'Enter') {
-      handleSearch();
-    }
+  const handleAddTrack = () => {
+    setTrackList([...trackList, { title: '', length: '' }]);
+  };
+
+  const handleRemoveTrack = (index: number) => {
+    const newTracks = [...trackList];
+    newTracks.splice(index, 1);
+    setTrackList(newTracks);
+  };
+
+  const handleTrackChange = (index: number, field: keyof TrackItem, value: string) => {
+    const newTracks = [...trackList];
+    newTracks[index][field] = value;
+    setTrackList(newTracks);
   };
 
   useEffect(() => {
     if (!editingId && isModalOpen) {
        setAttributeData((DEFAULT_ATTRIBUTES as any)[commonData.type]);
+       setTrackList([]);
     }
   }, [commonData.type, editingId, isModalOpen]);
 
@@ -80,18 +98,26 @@ export default function ProductManager() {
         type: product.type
       });
       
-      let loadedAttrs: any = { ...product.attributes };
-      
-      if (product.type === 'CD' && Array.isArray(loadedAttrs.tracks)) {
-          loadedAttrs.tracks = JSON.stringify(loadedAttrs.tracks);
+      let loadedAttrs: any = { ...product };
+
+      if (product.type === 'CD') {
+         setTrackList(Array.isArray((product as any).tracks) ? (product as any).tracks : []);
+      } else {
+         setTrackList([]);
       }
+      
       if ((product.type === 'DVD' || product.type === 'NEWSPAPER') && Array.isArray(loadedAttrs.subtitles || loadedAttrs.sections)) {
           const arr = loadedAttrs.subtitles || loadedAttrs.sections || [];
           const fieldName = product.type === 'DVD' ? 'subtitles' : 'sections';
           loadedAttrs[fieldName] = arr.join(', ');
       }
+
       ['publicationDate', 'releaseDate'].forEach(field => {
-          if (loadedAttrs[field]) loadedAttrs[field] = String(loadedAttrs[field]).split('T')[0];
+          if (loadedAttrs[field]) {
+              loadedAttrs[field] = String(loadedAttrs[field]).split('T')[0];
+          } else {
+              loadedAttrs[field] = '';
+          }
       });
 
       setAttributeData(loadedAttrs);
@@ -102,6 +128,7 @@ export default function ProductManager() {
         quantity: '', weight: '', imageUrl: '', type: 'BOOK'
       });
       setAttributeData(DEFAULT_ATTRIBUTES.BOOK);
+      setTrackList([]);
     }
     setIsModalOpen(true);
   };
@@ -119,24 +146,23 @@ export default function ProductManager() {
       };
 
       const attrs = payload.attributes;
+
       if (attrs.publicationDate === '') attrs.publicationDate = null;
       if (attrs.releaseDate === '') attrs.releaseDate = null;
       if (attrs.pages) attrs.pages = Number(attrs.pages);
-
+      
       if (commonData.type === 'CD') {
-         try {
-            attrs.tracks = JSON.parse(attrs.tracks || '[]');
-         } catch {
-            alert("Lỗi định dạng JSON ở trường Tracks");
-            return;
-         }
+         attrs.tracks = trackList;
       }
+      
       if (commonData.type === 'DVD') {
          attrs.subtitles = attrs.subtitles ? attrs.subtitles.split(',').map((s: string) => s.trim()) : [];
       }
       if (commonData.type === 'NEWSPAPER') {
          attrs.sections = attrs.sections ? attrs.sections.split(',').map((s: string) => s.trim()) : [];
       }
+
+      console.log("Payload:", payload);
 
       if (editingId) {
         await productService.update(editingId, payload);
@@ -154,9 +180,9 @@ export default function ProductManager() {
     }
   };
 
-  const handleDelete = async (id: number) => {
+  const handleDelete = async (id: number, type: string) => {
     if (window.confirm("Bạn có chắc muốn xóa sản phẩm này?")) {
-      await productService.delete(id);
+      await productService.delete(id, type);
       fetchProducts(searchTerm);
     }
   };
@@ -239,13 +265,39 @@ export default function ProductManager() {
                 value={attributeData.genre || ''} 
                 onChange={e => setAttributeData({...attributeData, genre: e.target.value})} />
             </div>
-            <div className="md:col-span-2">
-              <label className="text-sm font-medium">Danh sách bài hát (JSON Format)</label>
-              <textarea className={inputClass + " h-24 font-mono text-xs"}
-                placeholder='[{"title": "Song 1", "length": "3:00"}, ...]'
-                value={attributeData.tracks || ''} 
-                onChange={e => setAttributeData({...attributeData, tracks: e.target.value})} />
-              <p className="text-xs text-gray-500 mt-1">Ví dụ: {`[{"title": "Track 1", "length": "3:50"}]`}</p>
+
+            <div className="md:col-span-2 mt-2">
+              <label className="text-sm font-bold text-gray-700 mb-2 flex justify-between items-center">
+                 <span>Danh sách bài hát ({trackList.length})</span>
+                 <button type="button" onClick={handleAddTrack} className="text-xs bg-blue-100 text-blue-600 px-2 py-1 rounded hover:bg-blue-200 flex items-center gap-1">
+                    <Plus size={14}/> Thêm bài
+                 </button>
+              </label>
+              
+              <div className="bg-gray-50 border rounded p-2 max-h-60 overflow-y-auto">
+                 {trackList.length === 0 ? (
+                    <div className="text-center text-gray-400 text-sm py-4">Chưa có bài hát nào. Nhấn "Thêm bài" để bắt đầu.</div>
+                 ) : (
+                    <div className="space-y-2">
+                       {trackList.map((track, idx) => (
+                          <div key={idx} className="flex gap-2 items-center">
+                             <div className="w-8 text-center text-gray-400 text-xs font-bold">{idx + 1}</div>
+                             <input 
+                                type="text" placeholder="Tên bài hát" className="flex-1 border p-1.5 rounded text-sm"
+                                value={track.title} onChange={e => handleTrackChange(idx, 'title', e.target.value)} required
+                             />
+                             <input 
+                                type="text" placeholder="Thời lượng (vd: 3:50)" className="w-24 border p-1.5 rounded text-sm"
+                                value={track.length} onChange={e => handleTrackChange(idx, 'length', e.target.value)} required
+                             />
+                             <button type="button" onClick={() => handleRemoveTrack(idx)} className="text-red-500 p-1.5 hover:bg-red-100 rounded">
+                                <Trash2 size={16} />
+                             </button>
+                          </div>
+                       ))}
+                    </div>
+                 )}
+              </div>
             </div>
           </>
         );
@@ -381,7 +433,7 @@ export default function ProductManager() {
           {products.map((p) => (
               <div 
                 key={p.id} 
-                onClick={() => navigate(`/product/${p.id}`)}
+                onClick={() => navigate(`/product/${p.id}/${p.type}`)}
                 className="bg-white border border-gray-200 rounded-sm hover:shadow-lg transition-all duration-200 group relative flex flex-col cursor-pointer"
               >
                 <div className="relative w-full pt-[100%] overflow-hidden bg-gray-100">
@@ -393,6 +445,7 @@ export default function ProductManager() {
                    
                    <div className={`absolute top-2 left-0 text-white text-[10px] font-bold px-2 py-0.5 rounded-r-sm shadow-sm
                         ${p.type === 'BOOK' ? 'bg-blue-600' : 
+                          p.type === 'CD' ? 'bg-purple-600' : 
                           p.type === 'NEWSPAPER' ? 'bg-green-600' : 
                           'bg-red-600'
                         }`}
@@ -407,7 +460,7 @@ export default function ProductManager() {
                          <Pencil size={18} />
                       </button>
                       <button 
-                         onClick={(e) => { e.stopPropagation(); handleDelete(p.id); }}
+                         onClick={(e) => { e.stopPropagation(); handleDelete(p.id, p.type); }}
                          className="bg-white text-red-600 p-2 rounded-full hover:bg-red-50" title="Xóa">
                          <Trash2 size={18} />
                       </button>

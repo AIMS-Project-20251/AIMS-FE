@@ -106,7 +106,7 @@ export default function HomePage() {
                 <div 
                   key={product.id} 
                   className="bg-white border border-gray-100 rounded-sm hover:shadow-lg hover:-translate-y-0.5 transition-all duration-200 cursor-pointer flex flex-col relative group"
-                  onClick={() => navigate(`/product/${product.id}`)}
+                  onClick={() => navigate(`/product/${product.id}/${product.type}`)}
                 >
                   <div className="relative w-full pt-[100%] overflow-hidden bg-gray-50">
                      <img 
