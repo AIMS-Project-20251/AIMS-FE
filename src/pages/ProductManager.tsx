@@ -1,8 +1,20 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { productService } from '../services/productService';
-import type { Product, CreateProductDto } from '../types/product';
-import { Pencil, Trash2, Plus, X, Package, Weight, Search } from 'lucide-react';
+import type { Product, CreateProductDto, ProductType } from '../types/product';
+import { Pencil, Trash2, Plus, X, Search, Package, Weight, Loader } from 'lucide-react';
+
+const DEFAULT_ATTRIBUTES = {
+  BOOK: { authors: '', coverType: 'PAPERBACK', publisher: '', publicationDate: '', pages: 0, language: '', genre: '' },
+  CD: { artists: '', recordLabel: '', genre: '', releaseDate: '' },
+  DVD: { discType: 'BLURAY', director: '', runtime: '', studio: '', language: '', subtitles: '', releaseDate: '', genre: '' },
+  NEWSPAPER: { editorInChief: '', publisher: '', publicationDate: '', issueNumber: '', publicationFrequency: '', issn: '', language: '', sections: '' }
+};
+
+interface TrackItem {
+  title: string;
+  length: string;
+}
 
 export default function ProductManager() {
   const [products, setProducts] = useState<Product[]>([]);
@@ -11,11 +23,7 @@ export default function ProductManager() {
   const [editingId, setEditingId] = useState<number | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
 
-  const navigate = useNavigate();
-  const originalValueRef = useRef<HTMLInputElement>(null);
-  const currentPriceRef = useRef<HTMLInputElement>(null);
-
-  const [formData, setFormData] = useState<any>({
+  const [commonData, setCommonData] = useState({
     title: '',
     category: '',
     originalValue: '',
@@ -23,8 +31,13 @@ export default function ProductManager() {
     quantity: '',
     weight: '',
     imageUrl: '',
-    type: 'BOOK'
+    type: 'BOOK' as ProductType
   });
+
+  const [attributeData, setAttributeData] = useState<any>(DEFAULT_ATTRIBUTES.BOOK);
+  const [trackList, setTrackList] = useState<TrackItem[]>([]);
+  const navigate = useNavigate();
+  const currentPriceRef = useRef<HTMLInputElement>(null);
 
   const fetchProducts = async (keyword = '') => {
     try {
@@ -42,97 +55,39 @@ export default function ProductManager() {
     fetchProducts();
   }, []);
 
-  const handleSearch = () => {
-    fetchProducts(searchTerm);
-  };
-
+  const handleSearch = () => fetchProducts(searchTerm);
+  
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === 'Enter') {
-      handleSearch();
+    if (e.key === 'Enter') handleSearch();
+  };
+
+  const handleAddTrack = () => {
+    setTrackList([...trackList, { title: '', length: '' }]);
+  };
+
+  const handleRemoveTrack = (index: number) => {
+    const newTracks = [...trackList];
+    newTracks.splice(index, 1);
+    setTrackList(newTracks);
+  };
+
+  const handleTrackChange = (index: number, field: keyof TrackItem, value: string) => {
+    const newTracks = [...trackList];
+    newTracks[index][field] = value;
+    setTrackList(newTracks);
+  };
+
+  useEffect(() => {
+    if (!editingId && isModalOpen) {
+       setAttributeData((DEFAULT_ATTRIBUTES as any)[commonData.type]);
+       setTrackList([]);
     }
-  };
-
-  const handleNumberInput = (field: string, value: string) => {
-    let cleanValue = value.replace(/,/g, '.');
-    if (!/^[0-9.]*$/.test(cleanValue)) return;
-    if ((cleanValue.match(/\./g) || []).length > 1) return;
-    setFormData({ ...formData, [field]: cleanValue });
-  };
-
-  const handleIntegerInput = (field: string, value: string) => {
-    if (!/^[0-9]*$/.test(value)) return;
-    setFormData({ ...formData, [field]: value });
-  };
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    try {
-      const payload: CreateProductDto = {
-        ...formData,
-        originalValue: Number(formData.originalValue),
-        currentPrice: Number(formData.currentPrice),
-        quantity: Number(formData.quantity),
-        weight: Number(formData.weight),
-      };
-
-      if (editingId) {
-        await productService.update(editingId, payload);
-        alert("Cập nhật thành công!");
-      } else {
-        await productService.create(payload);
-        alert("Tạo mới thành công!");
-      }
-      setIsModalOpen(false);
-      fetchProducts(searchTerm);
-
-    } catch (error: any) {
-      console.error(error);
-      const message = error.response?.data?.message;
-
-      if (typeof message === 'string') {
-        if (message.includes('Price must be between')) {
-          if (currentPriceRef.current) {
-            currentPriceRef.current.setCustomValidity("Giá bán phải từ 30% đến 150% giá gốc!");
-            currentPriceRef.current.reportValidity();
-          }
-        } else {
-          alert(`Lỗi: ${message}`);
-        }
-      } 
-      else if (Array.isArray(message)) {
-        const firstError = message[0];
-        if (firstError.includes('originalValue')) {
-           originalValueRef.current?.setCustomValidity("Vui lòng nhập giá gốc hợp lệ");
-           originalValueRef.current?.reportValidity();
-        } 
-        else if (firstError.includes('currentPrice')) {
-           currentPriceRef.current?.setCustomValidity("Vui lòng nhập giá bán hợp lệ");
-           currentPriceRef.current?.reportValidity();
-        }
-        else {
-           alert(`Lỗi dữ liệu: ${firstError}`);
-        }
-      } 
-      else {
-        alert("Có lỗi xảy ra khi kết nối Server.");
-      }
-    }
-  };
-
-  const handleDelete = async (id: number) => {
-    if (!window.confirm("Bạn có chắc muốn xóa sản phẩm này?")) return;
-    try {
-      await productService.delete(id);
-      fetchProducts(searchTerm);
-    } catch (error) {
-      alert("Không thể xóa sản phẩm.");
-    }
-  };
+  }, [commonData.type, editingId, isModalOpen]);
 
   const openModal = (product?: Product) => {
     if (product) {
       setEditingId(product.id);
-      setFormData({
+      setCommonData({
         title: product.title,
         category: product.category,
         originalValue: String(product.originalValue),
@@ -142,22 +97,295 @@ export default function ProductManager() {
         imageUrl: product.imageUrl,
         type: product.type
       });
+      
+      let loadedAttrs: any = { ...product };
+
+      if (product.type === 'CD') {
+         setTrackList(Array.isArray((product as any).tracks) ? (product as any).tracks : []);
+      } else {
+         setTrackList([]);
+      }
+      
+      if ((product.type === 'DVD' || product.type === 'NEWSPAPER') && Array.isArray(loadedAttrs.subtitles || loadedAttrs.sections)) {
+          const arr = loadedAttrs.subtitles || loadedAttrs.sections || [];
+          const fieldName = product.type === 'DVD' ? 'subtitles' : 'sections';
+          loadedAttrs[fieldName] = arr.join(', ');
+      }
+
+      ['publicationDate', 'releaseDate'].forEach(field => {
+          if (loadedAttrs[field]) {
+              loadedAttrs[field] = String(loadedAttrs[field]).split('T')[0];
+          } else {
+              loadedAttrs[field] = '';
+          }
+      });
+
+      setAttributeData(loadedAttrs);
     } else {
       setEditingId(null);
-      setFormData({
+      setCommonData({
         title: '', category: '', originalValue: '', currentPrice: '',
         quantity: '', weight: '', imageUrl: '', type: 'BOOK'
       });
+      setAttributeData(DEFAULT_ATTRIBUTES.BOOK);
+      setTrackList([]);
     }
     setIsModalOpen(true);
   };
 
-  const getDiscount = (original: number, current: number) => {
-     if(!original || original <= current) return 0;
-     return Math.round(((original - current) / original) * 100);
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    try {
+      const payload: any = {
+        ...commonData,
+        originalValue: Number(commonData.originalValue),
+        currentPrice: Number(commonData.currentPrice),
+        quantity: Number(commonData.quantity),
+        weight: Number(commonData.weight),
+        attributes: { ...attributeData }
+      };
+
+      const attrs = payload.attributes;
+
+      if (attrs.publicationDate === '') attrs.publicationDate = null;
+      if (attrs.releaseDate === '') attrs.releaseDate = null;
+      if (attrs.pages) attrs.pages = Number(attrs.pages);
+      
+      if (commonData.type === 'CD') {
+         attrs.tracks = trackList;
+      }
+      
+      if (commonData.type === 'DVD') {
+         attrs.subtitles = attrs.subtitles ? attrs.subtitles.split(',').map((s: string) => s.trim()) : [];
+      }
+      if (commonData.type === 'NEWSPAPER') {
+         attrs.sections = attrs.sections ? attrs.sections.split(',').map((s: string) => s.trim()) : [];
+      }
+
+      console.log("Payload:", payload);
+
+      if (editingId) {
+        await productService.update(editingId, payload);
+        alert("Cập nhật thành công!");
+      } else {
+        await productService.create(payload as CreateProductDto);
+        alert("Tạo mới thành công!");
+      }
+      setIsModalOpen(false);
+      fetchProducts(searchTerm);
+
+    } catch (error: any) {
+      console.error(error);
+      alert(`Lỗi: ${error.response?.data?.message || error.message}`);
+    }
+  };
+
+  const handleDelete = async (id: number, type: string) => {
+    if (window.confirm("Bạn có chắc muốn xóa sản phẩm này?")) {
+      await productService.delete(id, type);
+      fetchProducts(searchTerm);
+    }
   };
 
   const inputClass = "w-full border p-2 rounded mt-1 focus:ring-2 focus:ring-blue-500 outline-none";
+
+  const renderAttributeFields = () => {
+    switch (commonData.type) {
+      case 'BOOK':
+        return (
+          <>
+            <div className="md:col-span-2 font-bold text-blue-600 border-b pb-1 mt-2">Thông tin Sách</div>
+            <div>
+              <label className="text-sm font-medium">Tác giả *</label>
+              <input type="text" className={inputClass} required
+                value={attributeData.authors || ''} 
+                onChange={e => setAttributeData({...attributeData, authors: e.target.value})} />
+            </div>
+            <div>
+              <label className="text-sm font-medium">Nhà xuất bản *</label>
+              <input type="text" className={inputClass} required
+                value={attributeData.publisher || ''} 
+                onChange={e => setAttributeData({...attributeData, publisher: e.target.value})} />
+            </div>
+            <div>
+              <label className="text-sm font-medium">Ngày xuất bản *</label>
+              <input type="date" className={inputClass} required
+                value={attributeData.publicationDate || ''} 
+                onChange={e => setAttributeData({...attributeData, publicationDate: e.target.value})} />
+            </div>
+            <div>
+              <label className="text-sm font-medium">Loại bìa</label>
+              <select className={inputClass}
+                value={attributeData.coverType || 'PAPERBACK'} 
+                onChange={e => setAttributeData({...attributeData, coverType: e.target.value})}>
+                <option value="PAPERBACK">Bìa mềm</option>
+                <option value="HARDCOVER">Bìa cứng</option>
+              </select>
+            </div>
+            <div>
+              <label className="text-sm font-medium">Số trang</label>
+              <input type="number" className={inputClass}
+                value={attributeData.pages || ''} 
+                onChange={e => setAttributeData({...attributeData, pages: e.target.value})} />
+            </div>
+            <div>
+              <label className="text-sm font-medium">Thể loại</label>
+              <input type="text" className={inputClass}
+                value={attributeData.genre || ''} 
+                onChange={e => setAttributeData({...attributeData, genre: e.target.value})} />
+            </div>
+          </>
+        );
+
+      case 'CD':
+        return (
+          <>
+            <div className="md:col-span-2 font-bold text-blue-600 border-b pb-1 mt-2">Thông tin Đĩa CD</div>
+            <div>
+              <label className="text-sm font-medium">Nghệ sĩ *</label>
+              <input type="text" className={inputClass} required
+                value={attributeData.artists || ''} 
+                onChange={e => setAttributeData({...attributeData, artists: e.target.value})} />
+            </div>
+            <div>
+              <label className="text-sm font-medium">Hãng ghi âm *</label>
+              <input type="text" className={inputClass} required
+                value={attributeData.recordLabel || ''} 
+                onChange={e => setAttributeData({...attributeData, recordLabel: e.target.value})} />
+            </div>
+            <div>
+              <label className="text-sm font-medium">Ngày phát hành</label>
+              <input type="date" className={inputClass}
+                value={attributeData.releaseDate || ''} 
+                onChange={e => setAttributeData({...attributeData, releaseDate: e.target.value})} />
+            </div>
+            <div>
+              <label className="text-sm font-medium">Thể loại</label>
+              <input type="text" className={inputClass} required
+                value={attributeData.genre || ''} 
+                onChange={e => setAttributeData({...attributeData, genre: e.target.value})} />
+            </div>
+
+            <div className="md:col-span-2 mt-2">
+              <label className="text-sm font-bold text-gray-700 mb-2 flex justify-between items-center">
+                 <span>Danh sách bài hát ({trackList.length})</span>
+                 <button type="button" onClick={handleAddTrack} className="text-xs bg-blue-100 text-blue-600 px-2 py-1 rounded hover:bg-blue-200 flex items-center gap-1">
+                    <Plus size={14}/> Thêm bài
+                 </button>
+              </label>
+              
+              <div className="bg-gray-50 border rounded p-2 max-h-60 overflow-y-auto">
+                 {trackList.length === 0 ? (
+                    <div className="text-center text-gray-400 text-sm py-4">Chưa có bài hát nào. Nhấn "Thêm bài" để bắt đầu.</div>
+                 ) : (
+                    <div className="space-y-2">
+                       {trackList.map((track, idx) => (
+                          <div key={idx} className="flex gap-2 items-center">
+                             <div className="w-8 text-center text-gray-400 text-xs font-bold">{idx + 1}</div>
+                             <input 
+                                type="text" placeholder="Tên bài hát" className="flex-1 border p-1.5 rounded text-sm"
+                                value={track.title} onChange={e => handleTrackChange(idx, 'title', e.target.value)} required
+                             />
+                             <input 
+                                type="text" placeholder="Thời lượng (vd: 3:50)" className="w-24 border p-1.5 rounded text-sm"
+                                value={track.length} onChange={e => handleTrackChange(idx, 'length', e.target.value)} required
+                             />
+                             <button type="button" onClick={() => handleRemoveTrack(idx)} className="text-red-500 p-1.5 hover:bg-red-100 rounded">
+                                <Trash2 size={16} />
+                             </button>
+                          </div>
+                       ))}
+                    </div>
+                 )}
+              </div>
+            </div>
+          </>
+        );
+
+      case 'DVD':
+        return (
+          <>
+            <div className="md:col-span-2 font-bold text-blue-600 border-b pb-1 mt-2">Thông tin Đĩa DVD</div>
+            <div>
+              <label className="text-sm font-medium">Đạo diễn *</label>
+              <input type="text" className={inputClass} required
+                value={attributeData.director || ''} 
+                onChange={e => setAttributeData({...attributeData, director: e.target.value})} />
+            </div>
+            <div>
+              <label className="text-sm font-medium">Hãng phim *</label>
+              <input type="text" className={inputClass} required
+                value={attributeData.studio || ''} 
+                onChange={e => setAttributeData({...attributeData, studio: e.target.value})} />
+            </div>
+            <div>
+               <label className="text-sm font-medium">Loại đĩa</label>
+               <select className={inputClass}
+                  value={attributeData.discType || 'BLURAY'} 
+                  onChange={e => setAttributeData({...attributeData, discType: e.target.value})}>
+                  <option value="BLURAY">Blu-ray</option>
+                  <option value="HD_DVD">HD-DVD</option>
+               </select>
+            </div>
+            <div>
+              <label className="text-sm font-medium">Thời lượng (Runtime) *</label>
+              <input type="text" className={inputClass} required placeholder="120 mins"
+                value={attributeData.runtime || ''} 
+                onChange={e => setAttributeData({...attributeData, runtime: e.target.value})} />
+            </div>
+            <div>
+              <label className="text-sm font-medium">Ngôn ngữ *</label>
+              <input type="text" className={inputClass} required
+                value={attributeData.language || ''} 
+                onChange={e => setAttributeData({...attributeData, language: e.target.value})} />
+            </div>
+            <div>
+              <label className="text-sm font-medium">Phụ đề (cách nhau dấu phẩy)</label>
+              <input type="text" className={inputClass} placeholder="Tiếng Việt, English..."
+                value={attributeData.subtitles || ''} 
+                onChange={e => setAttributeData({...attributeData, subtitles: e.target.value})} />
+            </div>
+          </>
+        );
+
+        case 'NEWSPAPER':
+          return (
+            <>
+              <div className="md:col-span-2 font-bold text-blue-600 border-b pb-1 mt-2">Thông tin Báo chí</div>
+              <div>
+                <label className="text-sm font-medium">Tổng biên tập *</label>
+                <input type="text" className={inputClass} required
+                  value={attributeData.editorInChief || ''} 
+                  onChange={e => setAttributeData({...attributeData, editorInChief: e.target.value})} />
+              </div>
+              <div>
+                <label className="text-sm font-medium">Nhà xuất bản *</label>
+                <input type="text" className={inputClass} required
+                  value={attributeData.publisher || ''} 
+                  onChange={e => setAttributeData({...attributeData, publisher: e.target.value})} />
+              </div>
+              <div>
+                <label className="text-sm font-medium">Ngày phát hành *</label>
+                <input type="date" className={inputClass} required
+                  value={attributeData.publicationDate || ''} 
+                  onChange={e => setAttributeData({...attributeData, publicationDate: e.target.value})} />
+              </div>
+              <div>
+                <label className="text-sm font-medium">Tần suất</label>
+                <input type="text" className={inputClass} placeholder="Hàng ngày, Tuần san..."
+                  value={attributeData.publicationFrequency || ''} 
+                  onChange={e => setAttributeData({...attributeData, publicationFrequency: e.target.value})} />
+              </div>
+              <div className="md:col-span-2">
+                <label className="text-sm font-medium">Các chuyên mục (cách nhau dấu phẩy)</label>
+                <input type="text" className={inputClass} placeholder="Thể thao, Thời sự, Giải trí..."
+                  value={attributeData.sections || ''} 
+                  onChange={e => setAttributeData({...attributeData, sections: e.target.value})} />
+              </div>
+            </>
+          );
+    }
+  };
 
   return (
     <div className="container mx-auto p-6 bg-gray-100 min-h-screen">
@@ -181,6 +409,13 @@ export default function ProductManager() {
                 />
             </div>
             <button 
+              onClick={handleSearch} 
+              className="bg-gray-200 hover:bg-gray-300 text-gray-700 p-2 rounded-full"
+            >
+               <Search size={20} />
+            </button>
+
+            <button 
               onClick={() => openModal()}
               className="bg-red-600 text-white px-5 py-2 rounded-full shadow hover:bg-red-700 flex items-center gap-2 font-medium whitespace-nowrap"
             >
@@ -190,16 +425,15 @@ export default function ProductManager() {
       </div>
 
       {isLoading ? (
-        <div className="text-center py-20 text-gray-500">Đang tải dữ liệu...</div>
+        <div className="text-center py-20 text-gray-500 flex flex-col items-center">
+             <Loader className="animate-spin mb-2" /> Đang tải dữ liệu...
+        </div>
       ) : (
         <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-3">
-          {products.map((p) => {
-            const discount = getDiscount(p.originalValue, p.currentPrice);
-
-            return (
+          {products.map((p) => (
               <div 
                 key={p.id} 
-                onClick={() => navigate(`/product/${p.id}`)}
+                onClick={() => navigate(`/product/${p.id}/${p.type}`)}
                 className="bg-white border border-gray-200 rounded-sm hover:shadow-lg transition-all duration-200 group relative flex flex-col cursor-pointer"
               >
                 <div className="relative w-full pt-[100%] overflow-hidden bg-gray-100">
@@ -211,6 +445,7 @@ export default function ProductManager() {
                    
                    <div className={`absolute top-2 left-0 text-white text-[10px] font-bold px-2 py-0.5 rounded-r-sm shadow-sm
                         ${p.type === 'BOOK' ? 'bg-blue-600' : 
+                          p.type === 'CD' ? 'bg-purple-600' : 
                           p.type === 'NEWSPAPER' ? 'bg-green-600' : 
                           'bg-red-600'
                         }`}
@@ -225,7 +460,7 @@ export default function ProductManager() {
                          <Pencil size={18} />
                       </button>
                       <button 
-                         onClick={(e) => { e.stopPropagation(); handleDelete(p.id); }}
+                         onClick={(e) => { e.stopPropagation(); handleDelete(p.id, p.type); }}
                          className="bg-white text-red-600 p-2 rounded-full hover:bg-red-50" title="Xóa">
                          <Trash2 size={18} />
                       </button>
@@ -236,21 +471,7 @@ export default function ProductManager() {
                   <h3 className="text-xs text-gray-800 line-clamp-2 min-h-[32px] mb-2 leading-relaxed" title={p.title}>
                     {p.title}
                   </h3>
-
                   <div className="mt-auto">
-                      <div className="flex items-center gap-1 mb-1 min-h-[16px]">
-                         {discount > 0 && (
-                           <>
-                             <span className="text-[10px] text-gray-400 line-through decoration-gray-400">
-                                {p.originalValue.toLocaleString()}đ
-                             </span>
-                             <span className="text-[10px] text-red-600 bg-red-50 px-1 border border-red-200 rounded-sm font-semibold">
-                                Giảm {discount}%
-                             </span>
-                           </>
-                         )}
-                      </div>
-
                       <div className="flex justify-between items-end mb-2">
                           <span className="text-red-600 font-medium text-base">
                               {p.currentPrice.toLocaleString()} <span className="text-xs align-top">₫</span>
@@ -268,8 +489,7 @@ export default function ProductManager() {
                   </div>
                 </div>
               </div>
-            );
-          })}
+          ))}
           
           {products.length === 0 && (
              <div className="col-span-full text-center py-20 text-gray-400">
@@ -294,16 +514,18 @@ export default function ProductManager() {
             </h2>
             
             <form onSubmit={handleSubmit} className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="md:col-span-2 font-bold text-gray-700 bg-gray-100 p-2 rounded">Thông tin chung</div>
+
               <div className="md:col-span-2">
-                <label className="text-sm font-medium text-gray-700">Tên sản phẩm</label>
+                <label className="text-sm font-medium text-gray-700">Tên sản phẩm *</label>
                 <input type="text" className={inputClass} required
-                  value={formData.title} onChange={e => setFormData({...formData, title: e.target.value})} />
+                  value={commonData.title} onChange={e => setCommonData({...commonData, title: e.target.value})} />
               </div>
 
               <div>
                 <label className="text-sm font-medium text-gray-700">Loại sản phẩm</label>
-                <select className={inputClass}
-                  value={formData.type} onChange={e => setFormData({...formData, type: e.target.value as any})}>
+                <select className={inputClass} disabled={!!editingId}
+                  value={commonData.type} onChange={e => setCommonData({...commonData, type: e.target.value as ProductType})}>
                   <option value="BOOK">Sách</option>
                   <option value="CD">Đĩa CD</option>
                   <option value="DVD">Đĩa DVD</option>
@@ -312,68 +534,42 @@ export default function ProductManager() {
               </div>
 
               <div>
-                <label className="text-sm font-medium text-gray-700">Danh mục (Category)</label>
+                <label className="text-sm font-medium text-gray-700">Danh mục *</label>
                 <input type="text" className={inputClass} required
-                  value={formData.category} onChange={e => setFormData({...formData, category: e.target.value})} />
+                  value={commonData.category} onChange={e => setCommonData({...commonData, category: e.target.value})} />
               </div>
 
               <div>
-                <label className="text-sm font-medium text-gray-700">Giá gốc (VND)</label>
-                <input 
-                  ref={originalValueRef}
-                  type="text" className={inputClass} required
-                  value={formData.originalValue} 
-                  onChange={e => {
-                    handleNumberInput('originalValue', e.target.value);
-                    e.target.setCustomValidity('');
-                  }}
-                  onFocus={e => e.target.select()}
-                  placeholder="0"
-                />
+                <label className="text-sm font-medium text-gray-700">Giá gốc (VND) *</label>
+                <input type="number" className={inputClass} required
+                  value={commonData.originalValue} onChange={e => setCommonData({...commonData, originalValue: e.target.value})} />
               </div>
 
               <div>
-                <label className="text-sm font-medium text-gray-700">Giá bán hiện tại (VND)</label>
-                <input 
-                  ref={currentPriceRef}
-                  type="text" className={inputClass} required
-                  value={formData.currentPrice} 
-                  onChange={e => {
-                    handleNumberInput('currentPrice', e.target.value);
-                    e.target.setCustomValidity('');
-                  }}
-                  onFocus={e => e.target.select()}
-                  placeholder="0"
-                />
+                <label className="text-sm font-medium text-gray-700">Giá bán (VND) *</label>
+                <input ref={currentPriceRef} type="number" className={inputClass} required
+                  value={commonData.currentPrice} onChange={e => setCommonData({...commonData, currentPrice: e.target.value})} />
               </div>
 
               <div>
-                <label className="text-sm font-medium text-gray-700">Số lượng tồn kho</label>
-                <input 
-                  type="text" className={inputClass} required
-                  value={formData.quantity} 
-                  onChange={e => handleIntegerInput('quantity', e.target.value)}
-                  onFocus={e => e.target.select()}
-                  placeholder="0"
-                />
+                <label className="text-sm font-medium text-gray-700">Số lượng tồn kho *</label>
+                <input type="number" className={inputClass} required
+                  value={commonData.quantity} onChange={e => setCommonData({...commonData, quantity: e.target.value})} />
               </div>
 
               <div>
                 <label className="text-sm font-medium text-gray-700">Trọng lượng (kg)</label>
-                <input 
-                  type="text" className={inputClass} required
-                  value={formData.weight} 
-                  onChange={e => handleNumberInput('weight', e.target.value)}
-                  onFocus={e => e.target.select()}
-                  placeholder="0.0"
-                />
+                <input type="number" step="0.1" className={inputClass} required
+                  value={commonData.weight} onChange={e => setCommonData({...commonData, weight: e.target.value})} />
               </div>
               
               <div className="md:col-span-2">
                 <label className="text-sm font-medium text-gray-700">URL Hình ảnh</label>
                 <input type="text" className={inputClass} placeholder="https://..."
-                  value={formData.imageUrl} onChange={e => setFormData({...formData, imageUrl: e.target.value})} />
+                  value={commonData.imageUrl} onChange={e => setCommonData({...commonData, imageUrl: e.target.value})} />
               </div>
+
+              {renderAttributeFields()}
 
               <div className="md:col-span-2 mt-4 flex justify-end gap-3 pt-4 border-t">
                 <button type="button" onClick={() => setIsModalOpen(false)}
