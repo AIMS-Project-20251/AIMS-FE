@@ -9,6 +9,7 @@ export default function HomePage() {
   const [products, setProducts] = useState<Product[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
+  const role = localStorage.getItem('role');
   
   const navigate = useNavigate();
   
@@ -66,8 +67,6 @@ export default function HomePage() {
       quantity: 1,
       imageUrl: product.imageUrl
     });
-    
-    alert(`Đã thêm "${product.title}" vào giỏ!`);
   };
 
   return (
@@ -97,9 +96,11 @@ export default function HomePage() {
           </div>
 
           <div className="flex items-center gap-4 md:gap-6">
+            {role === 'pm' && (
              <button onClick={() => navigate('/admin/products')} className="hidden md:block text-xs bg-white/20 px-3 py-1.5 rounded hover:bg-white/30 transition border border-white/40">
                 Kênh Người Bán
              </button>
+            )}
 
              <div className="relative cursor-pointer hover:opacity-90 transition" onClick={() => navigate('/delivery-info')}>
                 <ShoppingCart size={28} />
