@@ -3,12 +3,21 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { productService } from '../services/productService';
 import { useCart } from '../context/CartContext';
 import type { Product } from '../types/product';
-import { ShoppingCart, ArrowLeft, Star, CheckCircle, Package, Truck } from 'lucide-react';
+import { ShoppingCart, ArrowLeft, Star, CheckCircle, Package, Truck, Disc, BookOpen, Film, Newspaper } from 'lucide-react';
+
+const InfoRow = ({ label, value }: { label: string, value: any }) => {
+  if (!value) return null;
+  return (
+    <>
+      <div className="text-gray-500">{label}:</div>
+      <div className="font-medium text-gray-900 break-words">{value}</div>
+    </>
+  );
+};
 
 export default function ProductDetail() {
   const { id, type } = useParams();
   const navigate = useNavigate();
-  
   const { addToCart } = useCart();
 
   const [product, setProduct] = useState<Product | null>(null);
@@ -33,7 +42,6 @@ export default function ProductDetail() {
 
   const handleAddToCart = () => {
     if (!product) return;
-
     addToCart({
       productId: product.id,
       type: product.type,
@@ -42,13 +50,11 @@ export default function ProductDetail() {
       quantity: quantity,
       imageUrl: product.imageUrl
     });
-
     alert(`Đã thêm ${quantity} sản phẩm vào giỏ hàng!`);
   };
 
   const handleBuyNow = () => {
     if (!product) return;
-
     addToCart({
       productId: product.id,
       type: product.type,
@@ -57,7 +63,6 @@ export default function ProductDetail() {
       quantity: quantity,
       imageUrl: product.imageUrl
     });
-
     navigate('/delivery-info');
   };
   
@@ -68,6 +73,102 @@ export default function ProductDetail() {
         case 'DVD': return 'text-orange-600 bg-orange-50 border-orange-200';
         default: return 'text-green-600 bg-green-50 border-green-200';
     }
+  };
+
+  const getTypeIcon = (t: string) => {
+    switch(t) {
+        case 'BOOK': return <BookOpen size={16} />;
+        case 'CD': return <Disc size={16} />;
+        case 'DVD': return <Film size={16} />;
+        default: return <Newspaper size={16} />;
+    }
+  };
+
+  const renderSpecificInfo = () => {
+    if (!product) return null;
+    const p = product as any;
+
+    const formatDate = (dateString: string) => {
+        if (!dateString) return '';
+        return dateString.split('T')[0];
+    };
+
+    switch (product.type) {
+      case 'BOOK':
+        return (
+          <>
+            <InfoRow label="Tác giả" value={p.authors} />
+            <InfoRow label="Nhà xuất bản" value={p.publisher} />
+            <InfoRow label="Ngày xuất bản" value={formatDate(p.publicationDate)} />
+            <InfoRow label="Số trang" value={p.pages} />
+            <InfoRow label="Loại bìa" value={p.coverType === 'HARDCOVER' ? 'Bìa cứng' : 'Bìa mềm'} />
+            <InfoRow label="Ngôn ngữ" value={p.language} />
+            <InfoRow label="Thể loại" value={p.genre} />
+          </>
+        );
+
+      case 'CD':
+        return (
+          <>
+            <InfoRow label="Nghệ sĩ" value={p.artists} />
+            <InfoRow label="Hãng thu âm" value={p.recordLabel} />
+            <InfoRow label="Ngày phát hành" value={formatDate(p.releaseDate)} />
+            <InfoRow label="Thể loại" value={p.genre} />
+          </>
+        );
+
+      case 'DVD':
+        return (
+          <>
+            <InfoRow label="Đạo diễn" value={p.director} />
+            <InfoRow label="Hãng phim" value={p.studio} />
+            <InfoRow label="Loại đĩa" value={p.discType === 'BLURAY' ? 'Blu-ray' : 'HD-DVD'} />
+            <InfoRow label="Thời lượng" value={p.runtime} />
+            <InfoRow label="Ngôn ngữ" value={p.language} />
+            <InfoRow label="Phụ đề" value={p.subtitles} />
+            <InfoRow label="Ngày phát hành" value={formatDate(p.releaseDate)} />
+            <InfoRow label="Thể loại" value={p.genre} />
+          </>
+        );
+
+      case 'NEWSPAPER':
+        return (
+          <>
+            <InfoRow label="Tổng biên tập" value={p.editorInChief} />
+            <InfoRow label="Nhà xuất bản" value={p.publisher} />
+            <InfoRow label="Ngày phát hành" value={formatDate(p.publicationDate)} />
+            <InfoRow label="Tần suất" value={p.publicationFrequency} />
+            <InfoRow label="Chuyên mục" value={p.sections} />
+          </>
+        );
+      
+      default: return null;
+    }
+  };
+
+  const renderTrackList = () => {
+    const p = product as any;
+    if (product?.type === 'CD' && p.tracks && p.tracks.length > 0) {
+        return (
+            <div className="mt-4 border-t pt-4">
+                <h4 className="font-bold text-gray-800 mb-3 text-sm flex items-center gap-2">
+                    <Disc size={16} className="text-purple-600"/> Danh sách bài hát
+                </h4>
+                <div className="bg-gray-50 rounded-lg border border-gray-200 overflow-hidden">
+                    {p.tracks.map((track: any, idx: number) => (
+                        <div key={idx} className="flex justify-between p-3 border-b last:border-0 hover:bg-white text-sm">
+                            <div className="flex gap-3">
+                                <span className="text-gray-400 font-mono w-4">{idx + 1}.</span>
+                                <span className="font-medium text-gray-800">{track.title}</span>
+                            </div>
+                            <span className="text-gray-500 text-xs">{track.length}</span>
+                        </div>
+                    ))}
+                </div>
+            </div>
+        )
+    }
+    return null;
   };
 
   if (isLoading) return (
@@ -94,7 +195,6 @@ export default function ProductDetail() {
                 <ArrowLeft size={20} className="text-gray-600" />
             </button>
             <span className="font-medium text-gray-700 truncate flex-1">{product.title}</span>
-            
             <button onClick={() => navigate('/delivery-info')} className="md:hidden text-gray-600 p-2">
                <ShoppingCart size={24} />
             </button>
@@ -109,14 +209,14 @@ export default function ProductDetail() {
                     <img 
                         src={product.imageUrl || 'https://placehold.co/600'} 
                         alt={product.title}
-                        className="max-w-full max-h-[400px] md:max-h-[500px] object-contain shadow-lg rounded-md group-hover:scale-105 transition-transform duration-300"
+                        className="max-w-full max-h-[400px] md:max-h-[500px] object-contain shadow-lg rounded-md"
                     />
                 </div>
 
                 <div className="p-6 md:p-8 flex flex-col h-full">
                     <div className="flex items-center gap-2 mb-3">
-                        <span className={`text-xs font-bold px-2.5 py-1 rounded border ${getTypeColor(product.type)}`}>
-                            {product.type}
+                        <span className={`text-xs font-bold px-2.5 py-1 rounded border flex items-center gap-1 ${getTypeColor(product.type)}`}>
+                            {getTypeIcon(product.type)} {product.type}
                         </span>
                         <span className="text-gray-500 text-sm font-medium uppercase tracking-wide">{product.category}</span>
                     </div>
@@ -159,8 +259,7 @@ export default function ProductDetail() {
                     <div className="mb-8">
                         <h3 className="font-bold text-gray-800 mb-3 text-lg border-b pb-1">Thông tin chi tiết</h3>
                         <div className="grid grid-cols-2 gap-y-3 text-sm">
-                            <div className="text-gray-500">Mã sản phẩm:</div>
-                            <div className="font-medium text-gray-900">#{product.id}</div>
+                            <InfoRow label="Mã sản phẩm" value={`#${product.id}`} />
                             
                             <div className="text-gray-500">Tình trạng:</div>
                             <div className="font-medium text-green-600 flex items-center gap-1">
@@ -171,16 +270,12 @@ export default function ProductDetail() {
                                 )}
                             </div>
 
-                            <div className="text-gray-500">Trọng lượng:</div>
-                            <div className="font-medium text-gray-900">{product.weight} kg</div>
+                            <InfoRow label="Trọng lượng" value={`${product.weight} kg`} />
                             
-                            {product.type === 'BOOK' && (product as any).authors && (
-                                <>
-                                  <div className="text-gray-500">Tác giả:</div>
-                                  <div className="font-medium text-gray-900">{(product as any).authors}</div>
-                                </>
-                            )}
+                            {renderSpecificInfo()}
                         </div>
+                        
+                        {renderTrackList()}
                     </div>
 
                     <div className="mt-auto pt-6">
