@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { orderService } from '../services/orderService';
 import { useCart } from '../context/CartContext';
 import type { OrderFeeResponse } from '../types/order';
-import { Trash2, ArrowLeft, MapPin, Phone, Mail, User } from 'lucide-react';
+import { Trash2, ArrowLeft, MapPin, Phone, Mail, User, Home } from 'lucide-react';
 
 export default function DeliveryInfo() {
   const navigate = useNavigate();
@@ -134,9 +134,13 @@ export default function DeliveryInfo() {
         
         <div className="flex-1 bg-white p-6 md:p-8 rounded-xl shadow-sm border border-gray-200">
           <div className="flex items-center gap-3 mb-6 border-b pb-4">
-             <div className="bg-red-100 p-2 rounded-full text-red-600">
-                 <MapPin size={24} />
-             </div>
+             <button 
+              onClick={() => navigate('/')}
+              className="bg-white border border-gray-300 p-2.5 rounded-full text-gray-600 hover:text-red-600 hover:border-red-600 hover:bg-red-50 transition-all shadow-sm"
+              title="Về trang chủ"
+           >
+              <Home size={20} />
+           </button>
              <h2 className="text-2xl font-bold text-gray-800">Thông tin giao hàng</h2>
           </div>
           
