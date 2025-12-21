@@ -1,4 +1,5 @@
 import { Routes, Route, Navigate } from 'react-router-dom';
+import ProtectedRoute from './components/ProtectedRoute';
 import DeliveryInfo from './pages/DeliveryInfo';
 import PaymentScreen from './pages/PaymentScreen';
 import OrderSuccess from './pages/OrderSuccess';
@@ -22,7 +23,7 @@ function App() {
 
           <Route path="/order-fail" element={<OrderFail />} />
 
-          <Route path="/admin/products" element={<ProductManager />} />
+          <Route path="/admin/products" element={<ProtectedRoute><ProductManager /></ProtectedRoute>} />
 
           <Route path="/product/:id/:type" element={<ProductDetail />} />
           

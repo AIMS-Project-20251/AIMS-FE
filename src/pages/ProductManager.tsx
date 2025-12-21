@@ -2,7 +2,7 @@ import React, { useEffect, useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { productService } from '../services/productService';
 import type { Product, CreateProductDto, ProductType } from '../types/product';
-import { Pencil, Trash2, Plus, X, Search, Package, Weight, Loader } from 'lucide-react';
+import { Pencil, Trash2, Plus, X, Search, Package, Weight, Loader, Home } from 'lucide-react';
 
 const DEFAULT_ATTRIBUTES = {
   BOOK: { authors: '', coverType: 'PAPERBACK', publisher: '', publicationDate: '', pages: 0, language: '', genre: '' },
@@ -106,10 +106,12 @@ export default function ProductManager() {
          setTrackList([]);
       }
       
-      if ((product.type === 'DVD' || product.type === 'NEWSPAPER') && Array.isArray(loadedAttrs.subtitles || loadedAttrs.sections)) {
+      if ((product.type === 'DVD' || product.type === 'NEWSPAPER')) {
           const arr = loadedAttrs.subtitles || loadedAttrs.sections || [];
           const fieldName = product.type === 'DVD' ? 'subtitles' : 'sections';
-          loadedAttrs[fieldName] = arr.join(', ');
+          if (Array.isArray(arr)) {
+            loadedAttrs[fieldName] = arr.join(', ');
+          }
       }
 
       ['publicationDate', 'releaseDate'].forEach(field => {
@@ -135,34 +137,38 @@ export default function ProductManager() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    console.log("STATE GỐC LÚC SUBMIT:", commonData);
     try {
       const payload: any = {
+        ...attributeData,
         ...commonData,
         originalValue: Number(commonData.originalValue),
         currentPrice: Number(commonData.currentPrice),
         quantity: Number(commonData.quantity),
         weight: Number(commonData.weight),
-        attributes: { ...attributeData }
       };
 
-      const attrs = payload.attributes;
-
-      if (attrs.publicationDate === '') attrs.publicationDate = null;
-      if (attrs.releaseDate === '') attrs.releaseDate = null;
-      if (attrs.pages) attrs.pages = Number(attrs.pages);
+      if (payload.publicationDate === '') payload.publicationDate = null;
+      if (payload.releaseDate === '') payload.releaseDate = null;
+      if (payload.pages) payload.pages = Number(payload.pages);
       
       if (commonData.type === 'CD') {
-         attrs.tracks = trackList;
+         payload.tracks = trackList;
       }
       
       if (commonData.type === 'DVD') {
-         attrs.subtitles = attrs.subtitles ? attrs.subtitles.split(',').map((s: string) => s.trim()) : [];
-      }
-      if (commonData.type === 'NEWSPAPER') {
-         attrs.sections = attrs.sections ? attrs.sections.split(',').map((s: string) => s.trim()) : [];
+         payload.subtitles = typeof payload.subtitles === 'string' 
+            ? payload.subtitles.split(',').map((s: string) => s.trim()).filter((s: string) => s) 
+            : payload.subtitles || [];
       }
 
-      console.log("Payload:", payload);
+      if (commonData.type === 'NEWSPAPER') {
+         payload.sections = typeof payload.sections === 'string'
+            ? payload.sections.split(',').map((s: string) => s.trim()).filter((s: string) => s)
+            : payload.sections || [];
+      }
+
+      console.log("Payload gửi đi (Flat):", payload);
 
       if (editingId) {
         await productService.update(editingId, payload);
@@ -391,9 +397,19 @@ export default function ProductManager() {
     <div className="container mx-auto p-6 bg-gray-100 min-h-screen">
       
       <div className="flex flex-col md:flex-row justify-between items-center mb-6 sticky top-0 bg-gray-100 z-10 py-2 gap-4">
-        <div>
-           <h1 className="text-2xl font-bold text-gray-800">Quản lý kho hàng</h1>
-           <p className="text-sm text-gray-500">Tổng số: {products.length} sản phẩm</p>
+        <div className="flex items-center gap-4 w-full md:w-auto">
+           <button 
+              onClick={() => navigate('/')}
+              className="bg-white border border-gray-300 p-2.5 rounded-full text-gray-600 hover:text-red-600 hover:border-red-600 hover:bg-red-50 transition-all shadow-sm"
+              title="Về trang chủ"
+           >
+              <Home size={20} />
+           </button>
+           
+           <div>
+              <h1 className="text-2xl font-bold text-gray-800">Quản lý kho hàng</h1>
+              <p className="text-sm text-gray-500">Tổng số: {products.length} sản phẩm</p>
+           </div>
         </div>
 
         <div className="flex gap-3 w-full md:w-auto">
@@ -519,7 +535,7 @@ export default function ProductManager() {
               <div className="md:col-span-2">
                 <label className="text-sm font-medium text-gray-700">Tên sản phẩm *</label>
                 <input type="text" className={inputClass} required
-                  value={commonData.title} onChange={e => setCommonData({...commonData, title: e.target.value})} />
+                  value={commonData.title} onChange={e => { const val = e.target.value; setCommonData(prev => ({...prev, title: val}));}} />
               </div>
 
               <div>
@@ -536,37 +552,37 @@ export default function ProductManager() {
               <div>
                 <label className="text-sm font-medium text-gray-700">Danh mục *</label>
                 <input type="text" className={inputClass} required
-                  value={commonData.category} onChange={e => setCommonData({...commonData, category: e.target.value})} />
+                  value={commonData.category} onChange={e => { const val = e.target.value; setCommonData(prev => ({...prev, category: val}));}} />
               </div>
 
               <div>
                 <label className="text-sm font-medium text-gray-700">Giá gốc (VND) *</label>
                 <input type="number" className={inputClass} required
-                  value={commonData.originalValue} onChange={e => setCommonData({...commonData, originalValue: e.target.value})} />
+                  value={commonData.originalValue} onChange={e => { const val = e.target.value; setCommonData(prev => ({...prev, originalValue: val}));}} />
               </div>
 
               <div>
                 <label className="text-sm font-medium text-gray-700">Giá bán (VND) *</label>
                 <input ref={currentPriceRef} type="number" className={inputClass} required
-                  value={commonData.currentPrice} onChange={e => setCommonData({...commonData, currentPrice: e.target.value})} />
+                  value={commonData.currentPrice} onChange={e => { const val = e.target.value; setCommonData(prev => ({...prev, currentPrice: val}));}} />
               </div>
 
               <div>
                 <label className="text-sm font-medium text-gray-700">Số lượng tồn kho *</label>
                 <input type="number" className={inputClass} required
-                  value={commonData.quantity} onChange={e => setCommonData({...commonData, quantity: e.target.value})} />
+                  value={commonData.quantity} onChange={e => { const val = e.target.value; setCommonData(prev => ({...prev, quantity: val}));}} />
               </div>
 
               <div>
                 <label className="text-sm font-medium text-gray-700">Trọng lượng (kg)</label>
                 <input type="number" step="0.1" className={inputClass} required
-                  value={commonData.weight} onChange={e => setCommonData({...commonData, weight: e.target.value})} />
+                  value={commonData.weight} onChange={e => { const val = e.target.value; setCommonData(prev => ({...prev, weight: val}));}} />
               </div>
               
               <div className="md:col-span-2">
                 <label className="text-sm font-medium text-gray-700">URL Hình ảnh</label>
                 <input type="text" className={inputClass} placeholder="https://..."
-                  value={commonData.imageUrl} onChange={e => setCommonData({...commonData, imageUrl: e.target.value})} />
+                  value={commonData.imageUrl} onChange={e => { const val = e.target.value; setCommonData(prev => ({...prev, imageUrl: val}));}} />
               </div>
 
               {renderAttributeFields()}
