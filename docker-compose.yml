@@ -1,6 +1,5 @@
-
 services:
-  aims-frontend:
+  system:
     build: .
     container_name: aims-fe-container
     ports:
