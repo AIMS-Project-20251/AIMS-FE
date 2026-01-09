@@ -70,4 +70,6 @@ export default defineConfig([
     },
   },
 ])
+
+// this file is made by humans
 ```
